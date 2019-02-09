@@ -18,7 +18,7 @@ import com.typesafe.config.ConfigFactory
 import akka.testkit.WithLogCapturing
 
 import scala.concurrent.duration._
-import scala.collection.{ immutable ⇒ im }
+import scala.collection.{ immutable => im }
 import scala.concurrent.duration._
 
 class AsyncDnsResolverSpec extends AkkaSpec(
@@ -85,7 +85,7 @@ class AsyncDnsResolverSpec extends AkkaSpec(
       val r = resolver(List(dnsClient1.ref, dnsClient2.ref))
       r ! Resolve("cats.com", Ip(ipv4 = true, ipv6 = false))
       expectMsgPF(remainingOrDefault) {
-        case Failure(ResolveFailedException(_)) ⇒
+        case Failure(ResolveFailedException(_)) =>
       }
     }
 
@@ -99,7 +99,7 @@ class AsyncDnsResolverSpec extends AkkaSpec(
       dnsClient2.expectMsg(Question4(2, "cats.com"))
       dnsClient2.reply(Failure(new RuntimeException("Yet another fail")))
       expectMsgPF(remainingOrDefault) {
-        case Failure(ResolveFailedException(_)) ⇒
+        case Failure(ResolveFailedException(_)) =>
       }
     }
 
@@ -121,7 +121,7 @@ class AsyncDnsResolverSpec extends AkkaSpec(
       r ! Resolve(name)
       dnsClient1.expectNoMessage(50.millis)
       val answer = expectMsgType[Resolved]
-      answer.records.collect { case r: ARecord ⇒ r }.toSet shouldEqual Set(
+      answer.records.collect { case r: ARecord => r }.toSet shouldEqual Set(
         ARecord("127.0.0.1", Ttl.effectivelyForever, InetAddress.getByName("127.0.0.1"))
       )
     }
@@ -133,7 +133,7 @@ class AsyncDnsResolverSpec extends AkkaSpec(
       r ! Resolve(name)
       dnsClient1.expectNoMessage(50.millis)
       val answer = expectMsgType[Resolved]
-      val Seq(AAAARecord("1:2:3:0:0:0:0:0", Ttl.effectivelyForever, _)) = answer.records.collect { case r: AAAARecord ⇒ r }
+      val Seq(AAAARecord("1:2:3:0:0:0:0:0", Ttl.effectivelyForever, _)) = answer.records.collect { case r: AAAARecord => r }
     }
 
     "return additional records for SRV requests" in {
@@ -162,7 +162,7 @@ class AsyncDnsResolverSpec extends AkkaSpec(
           search-domains = []
           ndots = 1
         """))
-    system.actorOf(Props(new AsyncDnsResolver(settings, new AsyncDnsCache(), (arf, l) ⇒ {
+    system.actorOf(Props(new AsyncDnsResolver(settings, new AsyncDnsCache(), (arf, l) => {
       clients
     })))
   }

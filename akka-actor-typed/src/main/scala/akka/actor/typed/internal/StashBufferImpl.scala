@@ -5,7 +5,7 @@
 package akka.actor.typed.internal
 
 import java.util.function.Consumer
-import java.util.function.{ Function ⇒ JFunction }
+import java.util.function.{ Function => JFunction }
 
 import akka.actor.typed.Behavior
 import akka.actor.typed.javadsl
@@ -18,7 +18,7 @@ import akka.util.ConstantFun
  */
 @InternalApi private[akka] object StashBufferImpl {
   private final class Node[T](var next: Node[T], val message: T) {
-    def apply(f: T ⇒ Unit): Unit = f(message)
+    def apply(f: T => Unit): Unit = f(message)
   }
 
   def apply[T](capacity: Int): StashBufferImpl[T] =
@@ -78,7 +78,7 @@ import akka.util.ConstantFun
     if (nonEmpty) _first.message
     else throw new NoSuchElementException("head of empty buffer")
 
-  override def foreach(f: T ⇒ Unit): Unit = {
+  override def foreach(f: T => Unit): Unit = {
     var node = _first
     while (node ne null) {
       node(f)
@@ -95,7 +95,7 @@ import akka.util.ConstantFun
     unstashAll(ctx.asScala, behavior)
 
   override def unstash(ctx: scaladsl.ActorContext[T], behavior: Behavior[T],
-                       numberOfMessages: Int, wrap: T ⇒ T): Behavior[T] = {
+                       numberOfMessages: Int, wrap: T => T): Behavior[T] = {
     val iter = new Iterator[T] {
       override def hasNext: Boolean = StashBufferImpl.this.nonEmpty
       override def next(): T = wrap(StashBufferImpl.this.dropHead())
@@ -105,7 +105,7 @@ import akka.util.ConstantFun
 
   override def unstash(ctx: javadsl.ActorContext[T], behavior: Behavior[T],
                        numberOfMessages: Int, wrap: JFunction[T, T]): Behavior[T] =
-    unstash(ctx.asScala, behavior, numberOfMessages, x ⇒ wrap.apply(x))
+    unstash(ctx.asScala, behavior, numberOfMessages, x => wrap.apply(x))
 
   override def toString: String =
     s"StashBuffer($size/$capacity)"

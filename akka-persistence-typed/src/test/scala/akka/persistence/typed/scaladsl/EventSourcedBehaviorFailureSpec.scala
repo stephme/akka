@@ -37,7 +37,7 @@ class ChaosJournal extends InmemJournal {
       Future.failed(TestException("database says no"))
     } else if (pid == "reject-first" && reject) {
       reject = false
-      Future.successful(messages.map(_ ⇒ Try {
+      Future.successful(messages.map(_ => Try {
         throw TestException("I don't like it")
       }))
     } else {
@@ -77,15 +77,15 @@ class EventSourcedBehaviorFailureSpec extends ScalaTestWithActorTestKit(EventSou
   def failingPersistentActor(pid: PersistenceId, probe: ActorRef[String]): EventSourcedBehavior[String, String, String] =
     EventSourcedBehavior[String, String, String](
       pid, "",
-      (_, cmd) ⇒ {
+      (_, cmd) => {
         probe.tell("persisting")
         Effect.persist(cmd)
       },
-      (state, event) ⇒ {
+      (state, event) => {
         probe.tell(event)
         state + event
       }
-    ).onRecoveryCompleted { _ ⇒
+    ).onRecoveryCompleted { _ =>
         probe.tell("starting")
       }.onPersistFailure(SupervisorStrategy.restartWithBackoff(1.milli, 5.millis, 0.1)
         .withLoggingEnabled(enabled = false))
@@ -96,7 +96,7 @@ class EventSourcedBehaviorFailureSpec extends ScalaTestWithActorTestKit(EventSou
       val notUsedProbe = TestProbe[String]()
       val probe = TestProbe[Throwable]()
       spawn(failingPersistentActor(PersistenceId("fail-recovery"), notUsedProbe.ref)
-        .onRecoveryFailure(t ⇒ probe.ref ! t))
+        .onRecoveryFailure(t => probe.ref ! t))
 
       probe.expectMessageType[TestException].message shouldEqual "Nope"
     }
@@ -104,7 +104,7 @@ class EventSourcedBehaviorFailureSpec extends ScalaTestWithActorTestKit(EventSou
     "handle exceptions in onRecoveryFailure" in {
       val probe = TestProbe[String]()
       val pa = spawn(failingPersistentActor(PersistenceId("fail-recovery-twice"), probe.ref)
-        .onRecoveryFailure(_ ⇒ throw TestException("recovery call back failure")))
+        .onRecoveryFailure(_ => throw TestException("recovery call back failure")))
       pa ! "one"
       probe.expectMessage("starting")
       probe.expectMessage("persisting")

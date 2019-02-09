@@ -70,8 +70,8 @@ object BackoffSupervisor {
     randomFactor:   Double,
     maxNrOfRetries: Int): Props = {
     val supervisionStrategy = SupervisorStrategy.defaultStrategy match {
-      case oneForOne: OneForOneStrategy ⇒ oneForOne.withMaxNrOfRetries(maxNrOfRetries)
-      case s                            ⇒ s
+      case oneForOne: OneForOneStrategy => oneForOne.withMaxNrOfRetries(maxNrOfRetries)
+      case s                            => s
     }
     propsWithSupervisorStrategy(childProps, childName, minBackoff, maxBackoff, randomFactor, supervisionStrategy)
   }
@@ -272,8 +272,8 @@ object BackoffSupervisor {
     val rnd = 1.0 + ThreadLocalRandom.current().nextDouble() * randomFactor
     val calculatedDuration = Try(maxBackoff.min(minBackoff * math.pow(2, restartCount)) * rnd).getOrElse(maxBackoff)
     calculatedDuration match {
-      case f: FiniteDuration ⇒ f
-      case _                 ⇒ maxBackoff
+      case f: FiniteDuration => f
+      case _                 => maxBackoff
     }
   }
 }
@@ -292,7 +292,7 @@ final class BackoffSupervisor(
   randomFactor:          Double,
   strategy:              SupervisorStrategy,
   val replyWhileStopped: Option[Any],
-  val finalStopMessage:  Option[Any ⇒ Boolean])
+  val finalStopMessage:  Option[Any => Boolean])
   extends Actor with HandleBackoff
   with ActorLogging {
 
@@ -301,15 +301,15 @@ final class BackoffSupervisor(
 
   // to keep binary compatibility with 2.4.1
   override val supervisorStrategy = strategy match {
-    case oneForOne: OneForOneStrategy ⇒
+    case oneForOne: OneForOneStrategy =>
       OneForOneStrategy(oneForOne.maxNrOfRetries, oneForOne.withinTimeRange, oneForOne.loggingEnabled) {
-        case ex ⇒
+        case ex =>
           val defaultDirective: Directive =
-            super.supervisorStrategy.decider.applyOrElse(ex, (_: Any) ⇒ Escalate)
+            super.supervisorStrategy.decider.applyOrElse(ex, (_: Any) => Escalate)
 
-          strategy.decider.applyOrElse(ex, (_: Any) ⇒ defaultDirective)
+          strategy.decider.applyOrElse(ex, (_: Any) => defaultDirective)
       }
-    case s ⇒ s
+    case s => s
   }
 
   // for binary compatibility with 2.5.18
@@ -343,14 +343,14 @@ final class BackoffSupervisor(
     this(childProps, childName, minBackoff, maxBackoff, randomFactor, SupervisorStrategy.defaultStrategy)
 
   def onTerminated: Receive = {
-    case Terminated(ref) if child.contains(ref) ⇒
+    case Terminated(ref) if child.contains(ref) =>
       child = None
       if (finalStopMessageReceived) {
         context.stop(self)
       } else {
         val maxNrOfRetries = strategy match {
-          case oneForOne: OneForOneStrategy ⇒ oneForOne.maxNrOfRetries
-          case _                            ⇒ -1
+          case oneForOne: OneForOneStrategy => oneForOne.maxNrOfRetries
+          case _                            => -1
         }
 
         val nextRestartCount = restartCount + 1
@@ -370,12 +370,12 @@ final class BackoffSupervisor(
   def receive = onTerminated orElse handleBackoff
 }
 
-private[akka] trait HandleBackoff { this: Actor ⇒
+private[akka] trait HandleBackoff { this: Actor =>
   def childProps: Props
   def childName: String
   def reset: BackoffReset
   def replyWhileStopped: Option[Any]
-  def finalStopMessage: Option[Any ⇒ Boolean]
+  def finalStopMessage: Option[Any => Boolean]
 
   var child: Option[ActorRef] = None
   var restartCount = 0
@@ -393,49 +393,49 @@ private[akka] trait HandleBackoff { this: Actor ⇒
   }
 
   def handleBackoff: Receive = {
-    case StartChild ⇒
+    case StartChild =>
       startChild()
       reset match {
-        case AutoReset(resetBackoff) ⇒
+        case AutoReset(resetBackoff) =>
           val _ = context.system.scheduler.scheduleOnce(resetBackoff, self, ResetRestartCount(restartCount))
-        case _ ⇒ // ignore
+        case _ => // ignore
       }
 
-    case Reset ⇒
+    case Reset =>
       reset match {
-        case ManualReset ⇒ restartCount = 0
-        case msg         ⇒ unhandled(msg)
+        case ManualReset => restartCount = 0
+        case msg         => unhandled(msg)
       }
 
-    case ResetRestartCount(current) ⇒
+    case ResetRestartCount(current) =>
       if (current == restartCount) {
         restartCount = 0
       }
 
-    case GetRestartCount ⇒
+    case GetRestartCount =>
       sender() ! RestartCount(restartCount)
 
-    case GetCurrentChild ⇒
+    case GetCurrentChild =>
       sender() ! CurrentChild(child)
 
-    case msg if child.contains(sender()) ⇒
+    case msg if child.contains(sender()) =>
       // use the BackoffSupervisor as sender
       context.parent ! msg
 
-    case msg ⇒ child match {
-      case Some(c) ⇒
+    case msg => child match {
+      case Some(c) =>
         c.forward(msg)
         if (!finalStopMessageReceived && finalStopMessage.isDefined) {
           finalStopMessageReceived = finalStopMessage.get.apply(msg)
         }
-      case None ⇒
+      case None =>
         replyWhileStopped match {
-          case None    ⇒ context.system.deadLetters.forward(msg)
-          case Some(r) ⇒ sender() ! r
+          case None    => context.system.deadLetters.forward(msg)
+          case Some(r) => sender() ! r
         }
         finalStopMessage match {
-          case None ⇒
-          case Some(fsm) ⇒
+          case None =>
+          case Some(fsm) =>
             if (fsm(msg)) {
               context.stop(self)
             }

@@ -57,8 +57,8 @@ lazy val root = Project(
  .settings(rootSettings: _*)
  .settings(unidocRootIgnoreProjects :=
    (CrossVersion.partialVersion(scalaVersion.value) match {
-     case Some((2, n)) if n == 11 ⇒ aggregatedProjects // ignore all, don't unidoc when scalaVersion is 2.11
-     case _                       ⇒ Seq(remoteTests, benchJmh, protobuf, akkaScalaNightly, docs)
+     case Some((2, n)) if n == 11 => aggregatedProjects // ignore all, don't unidoc when scalaVersion is 2.11
+     case _                       => Seq(remoteTests, benchJmh, protobuf, akkaScalaNightly, docs)
    })
  )
  .settings(

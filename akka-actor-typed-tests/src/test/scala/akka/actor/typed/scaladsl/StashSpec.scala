@@ -21,46 +21,46 @@ object StashSpec {
   final case class GetStashSize(replyTo: ActorRef[Int]) extends Command
 
   val immutableStash: Behavior[Command] =
-    Behaviors.setup[Command] { _ ⇒
+    Behaviors.setup[Command] { _ =>
       val buffer = StashBuffer[Command](capacity = 10)
 
       def active(processed: Vector[String]): Behavior[Command] =
-        Behaviors.receive { (context, cmd) ⇒
+        Behaviors.receive { (context, cmd) =>
           cmd match {
-            case message: Msg ⇒
+            case message: Msg =>
               active(processed :+ message.s)
-            case GetProcessed(replyTo) ⇒
+            case GetProcessed(replyTo) =>
               replyTo ! processed
               Behaviors.same
-            case Stash ⇒
+            case Stash =>
               stashing(processed)
-            case GetStashSize(replyTo) ⇒
+            case GetStashSize(replyTo) =>
               replyTo ! 0
               Behaviors.same
-            case UnstashAll ⇒
+            case UnstashAll =>
               Behaviors.unhandled
-            case Unstash ⇒
+            case Unstash =>
               Behaviors.unhandled
-            case u: Unstashed ⇒
+            case u: Unstashed =>
               throw new IllegalStateException(s"Unexpected $u in active")
           }
         }
 
       def stashing(processed: Vector[String]): Behavior[Command] =
-        Behaviors.receive { (context, cmd) ⇒
+        Behaviors.receive { (context, cmd) =>
           cmd match {
-            case message: Msg ⇒
+            case message: Msg =>
               buffer.stash(message)
               Behaviors.same
-            case g: GetProcessed ⇒
+            case g: GetProcessed =>
               buffer.stash(g)
               Behaviors.same
-            case GetStashSize(replyTo) ⇒
+            case GetStashSize(replyTo) =>
               replyTo ! buffer.size
               Behaviors.same
-            case UnstashAll ⇒
+            case UnstashAll =>
               buffer.unstashAll(context, active(processed))
-            case Unstash ⇒
+            case Unstash =>
               context.log.debug(s"Unstash ${buffer.size}")
               if (buffer.isEmpty)
                 active(processed)
@@ -70,34 +70,34 @@ object StashSpec {
                 context.log.debug(s"Unstash $numberOfMessages of ${buffer.size}, starting with ${buffer.head}")
                 buffer.unstash(context, unstashing(processed), numberOfMessages, Unstashed)
               }
-            case Stash ⇒
+            case Stash =>
               Behaviors.unhandled
-            case u: Unstashed ⇒
+            case u: Unstashed =>
               throw new IllegalStateException(s"Unexpected $u in stashing")
           }
         }
 
       def unstashing(processed: Vector[String]): Behavior[Command] =
-        Behaviors.receive { (context, cmd) ⇒
+        Behaviors.receive { (context, cmd) =>
           cmd match {
-            case Unstashed(message: Msg) ⇒
+            case Unstashed(message: Msg) =>
               context.log.debug(s"unstashed $message")
               unstashing(processed :+ message.s)
-            case Unstashed(GetProcessed(replyTo)) ⇒
+            case Unstashed(GetProcessed(replyTo)) =>
               context.log.debug(s"unstashed GetProcessed")
               replyTo ! processed
               Behaviors.same
-            case message: Msg ⇒
+            case message: Msg =>
               context.log.debug(s"got $message in unstashing")
               buffer.stash(message)
               Behaviors.same
-            case g: GetProcessed ⇒
+            case g: GetProcessed =>
               context.log.debug(s"got GetProcessed in unstashing")
               buffer.stash(g)
               Behaviors.same
-            case Stash ⇒
+            case Stash =>
               stashing(processed)
-            case Unstash ⇒
+            case Unstash =>
               if (buffer.isEmpty) {
                 context.log.debug(s"unstashing done")
                 active(processed)
@@ -107,12 +107,12 @@ object StashSpec {
                 context.log.debug(s"Unstash $numberOfMessages of ${buffer.size}, starting with ${buffer.head}")
                 buffer.unstash(context, unstashing(processed), numberOfMessages, Unstashed)
               }
-            case GetStashSize(replyTo) ⇒
+            case GetStashSize(replyTo) =>
               replyTo ! buffer.size
               Behaviors.same
-            case UnstashAll ⇒
+            case UnstashAll =>
               Behaviors.unhandled
-            case u: Unstashed ⇒
+            case u: Unstashed =>
               throw new IllegalStateException(s"Unexpected $u in unstashing")
           }
         }
@@ -128,28 +128,28 @@ object StashSpec {
 
     override def onMessage(cmd: Command): Behavior[Command] = {
       cmd match {
-        case message: Msg ⇒
+        case message: Msg =>
           if (stashing)
             buffer.stash(message)
           else
             processed :+= message.s
           this
-        case g @ GetProcessed(replyTo) ⇒
+        case g @ GetProcessed(replyTo) =>
           if (stashing)
             buffer.stash(g)
           else
             replyTo ! processed
           this
-        case GetStashSize(replyTo) ⇒
+        case GetStashSize(replyTo) =>
           replyTo ! buffer.size
           this
-        case Stash ⇒
+        case Stash =>
           stashing = true
           this
-        case UnstashAll ⇒
+        case UnstashAll =>
           stashing = false
           buffer.unstashAll(context, this)
-        case Unstash ⇒
+        case Unstash =>
           if (buffer.isEmpty) {
             stashing = false
             this
@@ -159,15 +159,15 @@ object StashSpec {
             context.log.debug(s"Unstash $numberOfMessages of ${buffer.size}, starting with ${buffer.head}")
             buffer.unstash(context, this, numberOfMessages, Unstashed)
           }
-        case Unstashed(message: Msg) ⇒
+        case Unstashed(message: Msg) =>
           context.log.debug(s"unstashed $message")
           processed :+= message.s
           this
-        case Unstashed(GetProcessed(replyTo)) ⇒
+        case Unstashed(GetProcessed(replyTo)) =>
           context.log.debug(s"unstashed GetProcessed")
           replyTo ! processed
           Behaviors.same
-        case _: Unstashed ⇒
+        case _: Unstashed =>
           Behaviors.unhandled
       }
     }
@@ -185,7 +185,7 @@ class ImmutableStashSpec extends StashSpec {
 class MutableStashSpec extends StashSpec {
   import StashSpec._
   def testQualifier: String = "mutable behavior"
-  def behaviorUnderTest: Behavior[Command] = Behaviors.setup(context ⇒ new MutableStash(context))
+  def behaviorUnderTest: Behavior[Command] = Behaviors.setup(context => new MutableStash(context))
 }
 
 abstract class StashSpec extends ScalaTestWithActorTestKit with WordSpecLike {

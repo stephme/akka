@@ -33,7 +33,7 @@ class SourceWithContextSpec extends StreamSpec {
       Source(Vector(msg))
         .startContextPropagation(_.offset)
         .map(_.data)
-        .endContextPropagation.map { case (e, _) ⇒ e }
+        .endContextPropagation.map { case (e, _) => e }
         .runWith(TestSink.probe[String])
         .request(1)
         .expectNext("a")
@@ -63,7 +63,7 @@ class SourceWithContextSpec extends StreamSpec {
       Source(Vector(Message("a", 1L)))
         .startContextPropagation(_.offset)
         .map(_.data)
-        .via(flowWithContext.map(s ⇒ s + "b"))
+        .via(flowWithContext.map(s => s + "b"))
         .endContextPropagation
         .runWith(TestSink.probe[(String, Long)])
         .request(1)
@@ -75,8 +75,8 @@ class SourceWithContextSpec extends StreamSpec {
       Source(Vector(Message("a", 1L)))
         .startContextPropagation(_.offset)
         .map(_.data)
-        .mapConcat { str ⇒
-          List(1, 2, 3).map(i ⇒ s"$str-$i")
+        .mapConcat { str =>
+          List(1, 2, 3).map(i => s"$str-$i")
         }
         .endContextPropagation
         .runWith(TestSink.probe[(String, Long)])
@@ -89,8 +89,8 @@ class SourceWithContextSpec extends StreamSpec {
       Source(Vector(Message("a", 1L)))
         .startContextPropagation(_.offset)
         .map(_.data)
-        .mapConcat { str ⇒
-          List(1, 2, 3, 4).map(i ⇒ s"$str-$i")
+        .mapConcat { str =>
+          List(1, 2, 3, 4).map(i => s"$str-$i")
         }
         .grouped(2)
         .endContextPropagation
@@ -101,11 +101,11 @@ class SourceWithContextSpec extends StreamSpec {
     }
 
     "pass through context via statefulMapConcat" in {
-      val statefulFunction: () ⇒ String ⇒ collection.immutable.Iterable[String] = () ⇒ {
+      val statefulFunction: () => String => collection.immutable.Iterable[String] = () => {
         var counter = 0
-        str ⇒ {
+        str => {
           counter = counter + 1
-          (1 to counter).map(_ ⇒ str)
+          (1 to counter).map(_ => str)
         }
       }
       Source(Vector(Message("a", 1L), Message("z", 2L)))

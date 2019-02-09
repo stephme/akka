@@ -59,7 +59,7 @@ private[akka] class ReplayingEvents[C, E, S](override val setup: BehaviorSetup[C
   import ReplayingEvents.ReplayingState
 
   def createBehavior(state: ReplayingState[S]): Behavior[InternalProtocol] = {
-    Behaviors.setup { _ ⇒
+    Behaviors.setup { _ =>
       // protect against event recovery stalling forever because of journal overloaded and such
       setup.startRecoveryTimer(snapshot = false)
 
@@ -71,13 +71,13 @@ private[akka] class ReplayingEvents[C, E, S](override val setup: BehaviorSetup[C
 
   private def stay(state: ReplayingState[S]): Behavior[InternalProtocol] =
     Behaviors.receiveMessage[InternalProtocol] {
-      case JournalResponse(r)      ⇒ onJournalResponse(state, r)
-      case SnapshotterResponse(r)  ⇒ onSnapshotterResponse(r)
-      case RecoveryTickEvent(snap) ⇒ onRecoveryTick(state, snap)
-      case cmd: IncomingCommand[C] ⇒ onCommand(cmd, state)
-      case RecoveryPermitGranted   ⇒ Behaviors.unhandled // should not happen, we already have the permit
+      case JournalResponse(r)      => onJournalResponse(state, r)
+      case SnapshotterResponse(r)  => onSnapshotterResponse(r)
+      case RecoveryTickEvent(snap) => onRecoveryTick(state, snap)
+      case cmd: IncomingCommand[C] => onCommand(cmd, state)
+      case RecoveryPermitGranted   => Behaviors.unhandled // should not happen, we already have the permit
     }.receiveSignal(returnPermitOnStop.orElse {
-      case (_, PoisonPill) ⇒ stay(state.copy(receivedPoisonPill = true))
+      case (_, PoisonPill) => stay(state.copy(receivedPoisonPill = true))
     })
 
   private def onJournalResponse(
@@ -85,7 +85,7 @@ private[akka] class ReplayingEvents[C, E, S](override val setup: BehaviorSetup[C
     response: JournalProtocol.Response): Behavior[InternalProtocol] = {
     try {
       response match {
-        case ReplayedMessage(repr) ⇒
+        case ReplayedMessage(repr) =>
           val event = setup.eventAdapter.fromJournal(repr.payload.asInstanceOf[setup.eventAdapter.Per])
 
           try {
@@ -95,21 +95,21 @@ private[akka] class ReplayingEvents[C, E, S](override val setup: BehaviorSetup[C
               eventSeenInInterval = true)
             stay(newState)
           } catch {
-            case NonFatal(ex) ⇒ onRecoveryFailure(ex, repr.sequenceNr, Some(event))
+            case NonFatal(ex) => onRecoveryFailure(ex, repr.sequenceNr, Some(event))
           }
-        case RecoverySuccess(highestSeqNr) ⇒
+        case RecoverySuccess(highestSeqNr) =>
           setup.log.debug("Recovery successful, recovered until sequenceNr: [{}]", highestSeqNr)
           onRecoveryCompleted(state)
 
-        case ReplayMessagesFailure(cause) ⇒
+        case ReplayMessagesFailure(cause) =>
           onRecoveryFailure(cause, state.seqNr, Some(response))
 
-        case _ ⇒
+        case _ =>
           Behaviors.unhandled
       }
     } catch {
-      case FailureWhileUnstashing(ex) ⇒ throw ex
-      case NonFatal(cause) ⇒
+      case FailureWhileUnstashing(ex) => throw ex
+      case NonFatal(cause) =>
         onRecoveryFailure(cause, state.seqNr, None)
     }
   }
@@ -156,16 +156,16 @@ private[akka] class ReplayingEvents[C, E, S](override val setup: BehaviorSetup[C
     try {
       setup.onRecoveryFailure(cause)
     } catch {
-      case NonFatal(t) ⇒ setup.log.error(t, "onRecoveryFailure threw exception")
+      case NonFatal(t) => setup.log.error(t, "onRecoveryFailure threw exception")
     }
     setup.cancelRecoveryTimer()
     tryReturnRecoveryPermit("on replay failure: " + cause.getMessage)
 
     val msg = message match {
-      case Some(evt) ⇒
+      case Some(evt) =>
         s"Exception during recovery while handling [${evt.getClass.getName}] with sequence number [$sequenceNr]. " +
           s"PersistenceId [${setup.persistenceId.id}]"
-      case None ⇒
+      case None =>
         s"Exception during recovery.  Last known sequence number [$sequenceNr]. PersistenceId [${setup.persistenceId.id}]"
     }
 
@@ -187,7 +187,7 @@ private[akka] class ReplayingEvents[C, E, S](override val setup: BehaviorSetup[C
       try {
         tryUnstashOne(running)
       } catch {
-        case NonFatal(t) ⇒ throw FailureWhileUnstashing(t)
+        case NonFatal(t) => throw FailureWhileUnstashing(t)
       }
     }
   } finally {

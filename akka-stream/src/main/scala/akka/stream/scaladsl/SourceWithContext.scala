@@ -28,7 +28,7 @@ final class SourceWithContext[+Ctx, +Out, +Mat] private[stream] (
   override def via[Ctx2, Out2, Mat2](viaFlow: Graph[FlowShape[(Out, Ctx), (Out2, Ctx2)], Mat2]): Repr[Ctx2, Out2] =
     new SourceWithContext(delegate.via(viaFlow))
 
-  override def viaMat[Ctx2, Out2, Mat2, Mat3](flow: Graph[FlowShape[(Out, Ctx), (Out2, Ctx2)], Mat2])(combine: (Mat, Mat2) ⇒ Mat3): SourceWithContext[Ctx2, Out2, Mat3] =
+  override def viaMat[Ctx2, Out2, Mat2, Mat3](flow: Graph[FlowShape[(Out, Ctx), (Out2, Ctx2)], Mat2])(combine: (Mat, Mat2) => Mat3): SourceWithContext[Ctx2, Out2, Mat3] =
     new SourceWithContext(delegate.viaMat(flow)(combine))
 
   /**

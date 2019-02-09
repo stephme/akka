@@ -101,11 +101,11 @@ private[akka] object Running {
           msg.getClass.getName, effect, sideEffects.size)
 
       effect match {
-        case CompositeEffect(eff, currentSideEffects) ⇒
+        case CompositeEffect(eff, currentSideEffects) =>
           // unwrap and accumulate effects
           applyEffects(msg, state, eff, currentSideEffects ++ sideEffects)
 
-        case Persist(event) ⇒
+        case Persist(event) =>
           // apply the event before persist so that validation exception is handled before persisting
           // the invalid event, in case such validation is implemented in the event handler.
           // also, ensure that there is an event handler for each single event
@@ -119,14 +119,14 @@ private[akka] object Running {
 
           persistingEvents(newState2, numberOfEvents = 1, shouldSnapshotAfterPersist, sideEffects)
 
-        case PersistAll(events) ⇒
+        case PersistAll(events) =>
           if (events.nonEmpty) {
             // apply the event before persist so that validation exception is handled before persisting
             // the invalid event, in case such validation is implemented in the event handler.
             // also, ensure that there is an event handler for each single event
             var seqNr = state.seqNr
             val (newState, shouldSnapshotAfterPersist) = events.foldLeft((state, false)) {
-              case ((currentState, snapshot), event) ⇒
+              case ((currentState, snapshot), event) =>
                 seqNr += 1
                 val shouldSnapshot = snapshot || setup.snapshotWhen(currentState.state, event, seqNr)
                 (currentState.applyEvent(setup, event), shouldSnapshot)
@@ -143,16 +143,16 @@ private[akka] object Running {
             tryUnstashOne(applySideEffects(sideEffects, state))
           }
 
-        case _: PersistNothing.type ⇒
+        case _: PersistNothing.type =>
           tryUnstashOne(applySideEffects(sideEffects, state))
 
-        case _: Unhandled.type ⇒
+        case _: Unhandled.type =>
           import akka.actor.typed.scaladsl.adapter._
           setup.context.system.toUntyped.eventStream.publish(
             UnhandledMessage(msg, setup.context.system.toUntyped.deadLetters, setup.context.self.toUntyped))
           tryUnstashOne(applySideEffects(sideEffects, state))
 
-        case _: Stash.type ⇒
+        case _: Stash.type =>
           stashUser(IncomingCommand(msg))
           tryUnstashOne(applySideEffects(sideEffects, state))
       }
@@ -170,11 +170,11 @@ private[akka] object Running {
     setup.setMdc(runningCmdsMdc)
 
     Behaviors.receiveMessage[InternalProtocol] {
-      case IncomingCommand(c: C @unchecked) ⇒ onCommand(state, c)
-      case SnapshotterResponse(r)           ⇒ onSnapshotterResponse(r, Behaviors.same)
-      case _                                ⇒ Behaviors.unhandled
+      case IncomingCommand(c: C @unchecked) => onCommand(state, c)
+      case SnapshotterResponse(r)           => onSnapshotterResponse(r, Behaviors.same)
+      case _                                => Behaviors.unhandled
     }.receiveSignal {
-      case (_, PoisonPill) ⇒
+      case (_, PoisonPill) =>
         if (isInternalStashEmpty && !isUnstashAllInProgress) Behaviors.stopped
         else handlingCommands(state.copy(receivedPoisonPill = true))
     }
@@ -205,11 +205,11 @@ private[akka] object Running {
 
     override def onMessage(msg: InternalProtocol): Behavior[InternalProtocol] = {
       msg match {
-        case in: IncomingCommand[C @unchecked] ⇒ onCommand(in)
-        case SnapshotterResponse(r)            ⇒ onSnapshotterResponse(r, this)
-        case JournalResponse(r)                ⇒ onJournalResponse(r)
-        case RecoveryTickEvent(_)              ⇒ Behaviors.unhandled
-        case RecoveryPermitGranted             ⇒ Behaviors.unhandled
+        case in: IncomingCommand[C @unchecked] => onCommand(in)
+        case SnapshotterResponse(r)            => onSnapshotterResponse(r, this)
+        case JournalResponse(r)                => onJournalResponse(r)
+        case RecoveryTickEvent(_)              => Behaviors.unhandled
+        case RecoveryPermitGranted             => Behaviors.unhandled
       }
     }
 
@@ -243,37 +243,37 @@ private[akka] object Running {
       }
 
       response match {
-        case WriteMessageSuccess(p, id) ⇒
+        case WriteMessageSuccess(p, id) =>
           if (id == setup.writerIdentity.instanceId)
             onWriteResponse(p)
           else this
 
-        case WriteMessageRejected(p, cause, id) ⇒
+        case WriteMessageRejected(p, cause, id) =>
           if (id == setup.writerIdentity.instanceId) {
             throw new EventRejectedException(setup.persistenceId, p.sequenceNr, cause)
           } else this
 
-        case WriteMessageFailure(p, cause, id) ⇒
+        case WriteMessageFailure(p, cause, id) =>
           if (id == setup.writerIdentity.instanceId)
             throw new JournalFailureException(setup.persistenceId, p.sequenceNr, p.payload.getClass.getName, cause)
           else this
 
-        case WriteMessagesSuccessful ⇒
+        case WriteMessagesSuccessful =>
           // ignore
           this
 
-        case WriteMessagesFailed(_) ⇒
+        case WriteMessagesFailed(_) =>
           // ignore
           this // it will be stopped by the first WriteMessageFailure message; not applying side effects
 
-        case _ ⇒
+        case _ =>
           // ignore all other messages, since they relate to recovery handling which we're not dealing with in Running phase
           Behaviors.unhandled
       }
     }
 
     override def onSignal: PartialFunction[Signal, Behavior[InternalProtocol]] = {
-      case PoisonPill ⇒
+      case PoisonPill =>
         // wait for journal responses before stopping
         state = state.copy(receivedPoisonPill = true)
         this
@@ -285,21 +285,21 @@ private[akka] object Running {
     response: SnapshotProtocol.Response,
     outer:    Behavior[InternalProtocol]): Behavior[InternalProtocol] = {
     response match {
-      case SaveSnapshotSuccess(meta) ⇒
+      case SaveSnapshotSuccess(meta) =>
         setup.onSnapshot(meta, Success(Done))
         outer
-      case SaveSnapshotFailure(meta, ex) ⇒
+      case SaveSnapshotFailure(meta, ex) =>
         setup.onSnapshot(meta, Failure(ex))
         outer
 
       // FIXME not implemented
-      case DeleteSnapshotFailure(_, _)  ⇒ ???
-      case DeleteSnapshotSuccess(_)     ⇒ ???
-      case DeleteSnapshotsFailure(_, _) ⇒ ???
-      case DeleteSnapshotsSuccess(_)    ⇒ ???
+      case DeleteSnapshotFailure(_, _)  => ???
+      case DeleteSnapshotSuccess(_)     => ???
+      case DeleteSnapshotsFailure(_, _) => ???
+      case DeleteSnapshotsSuccess(_)    => ???
 
       // ignore LoadSnapshot messages
-      case _ ⇒
+      case _ =>
         Behaviors.unhandled
     }
   }
@@ -328,18 +328,18 @@ private[akka] object Running {
     state:    RunningState[S],
     behavior: Behavior[InternalProtocol]): Behavior[InternalProtocol] = {
     effect match {
-      case _: Stop.type @unchecked ⇒
+      case _: Stop.type @unchecked =>
         Behaviors.stopped
 
-      case _: UnstashAll.type @unchecked ⇒
+      case _: UnstashAll.type @unchecked =>
         unstashAll()
         behavior
 
-      case callback: Callback[_] ⇒
+      case callback: Callback[_] =>
         callback.sideEffect(state.state)
         behavior
 
-      case _ ⇒
+      case _ =>
         throw new IllegalArgumentException(s"Unsupported side effect detected [${effect.getClass.getName}]")
     }
   }

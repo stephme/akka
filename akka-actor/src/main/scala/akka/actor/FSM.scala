@@ -101,8 +101,8 @@ object FSM {
 
     def schedule(actor: ActorRef, timeout: FiniteDuration): Unit = {
       val timerMsg = msg match {
-        case m: AutoReceivedMessage ⇒ m
-        case _                      ⇒ this
+        case m: AutoReceivedMessage => m
+        case _                      => this
       }
       ref = Some(
         if (repeat) scheduler.schedule(timeout, timeout, actor, timerMsg)
@@ -174,9 +174,9 @@ object FSM {
      * Use Duration.Inf to deactivate an existing timeout.
      */
     def forMax(timeout: Duration): State[S, D] = timeout match {
-      case f: FiniteDuration ⇒ copy(timeout = Some(f))
-      case Duration.Inf      ⇒ copy(timeout = SomeMaxFiniteDuration) // we map the Infinite duration to a special marker,
-      case _                 ⇒ copy(timeout = None) // that means "cancel stateTimeout". This marker is needed
+      case f: FiniteDuration => copy(timeout = Some(f))
+      case Duration.Inf      => copy(timeout = SomeMaxFiniteDuration) // we map the Infinite duration to a special marker,
+      case _                 => copy(timeout = None) // that means "cancel stateTimeout". This marker is needed
     } // so we do not have to break source/binary compat.
     // TODO: Can be removed once we can break State#timeout signature to `Option[Duration]`
 
@@ -420,7 +420,7 @@ trait FSM[S, D] extends Actor with Listeners with ActorLogging {
 
   final class TransformHelper(func: StateFunction) {
     def using(andThen: PartialFunction[State, State]): StateFunction =
-      func andThen (andThen orElse { case x ⇒ x })
+      func andThen (andThen orElse { case x => x })
   }
 
   final def transform(func: StateFunction): TransformHelper = new TransformHelper(func)
@@ -507,7 +507,7 @@ trait FSM[S, D] extends Actor with Listeners with ActorLogging {
    * Convenience wrapper for using a total function instead of a partial
    * function literal. To be used with onTransition.
    */
-  implicit final def total2pf(transitionHandler: (S, S) ⇒ Unit): TransitionHandler =
+  implicit final def total2pf(transitionHandler: (S, S) => Unit): TransitionHandler =
     new TransitionHandler {
       def isDefinedAt(in: (S, S)) = true
       def apply(in: (S, S)): Unit = { transitionHandler(in._1, in._2) }
@@ -561,8 +561,8 @@ trait FSM[S, D] extends Actor with Listeners with ActorLogging {
    * Return next state data (available in onTransition handlers)
    */
   final def nextStateData = nextState match {
-    case null ⇒ throw new IllegalStateException("nextStateData is only available during onTransition")
-    case x    ⇒ x.stateData
+    case null => throw new IllegalStateException("nextStateData is only available during onTransition")
+    case x    => x.stateData
   }
 
   /*
@@ -607,7 +607,7 @@ trait FSM[S, D] extends Actor with Listeners with ActorLogging {
    * unhandled event handler
    */
   private val handleEventDefault: StateFunction = {
-    case Event(value, _) ⇒
+    case Event(value, _) =>
       log.warning("unhandled event " + value + " in state " + stateName)
       stay
   }
@@ -624,7 +624,7 @@ trait FSM[S, D] extends Actor with Listeners with ActorLogging {
   private var transitionEvent: List[TransitionHandler] = Nil
   private def handleTransition(prev: S, next: S): Unit = {
     val tuple = (prev, next)
-    for (te ← transitionEvent) { if (te.isDefinedAt(tuple)) te(tuple) }
+    for (te <- transitionEvent) { if (te.isDefinedAt(tuple)) te(tuple) }
   }
 
   /*
@@ -633,11 +633,11 @@ trait FSM[S, D] extends Actor with Listeners with ActorLogging {
    * *******************************************
    */
   override def receive: Receive = {
-    case TimeoutMarker(gen) ⇒
+    case TimeoutMarker(gen) =>
       if (generation == gen) {
         processMsg(StateTimeout, "state timeout")
       }
-    case t @ Timer(name, msg, repeat, gen, owner) ⇒
+    case t @ Timer(name, msg, repeat, gen, owner) =>
       if ((owner eq this) && (timers contains name) && (timers(name).generation == gen)) {
         if (timeoutFuture.isDefined) {
           timeoutFuture.get.cancel()
@@ -649,21 +649,21 @@ trait FSM[S, D] extends Actor with Listeners with ActorLogging {
         }
         processMsg(msg, t)
       }
-    case SubscribeTransitionCallBack(actorRef) ⇒
+    case SubscribeTransitionCallBack(actorRef) =>
       // TODO Use context.watch(actor) and receive Terminated(actor) to clean up list
       listeners.add(actorRef)
       // send current state back as reference point
       actorRef ! CurrentState(self, currentState.stateName)
-    case Listen(actorRef) ⇒
+    case Listen(actorRef) =>
       // TODO Use context.watch(actor) and receive Terminated(actor) to clean up list
       listeners.add(actorRef)
       // send current state back as reference point
       actorRef ! CurrentState(self, currentState.stateName)
-    case UnsubscribeTransitionCallBack(actorRef) ⇒
+    case UnsubscribeTransitionCallBack(actorRef) =>
       listeners.remove(actorRef)
-    case Deafen(actorRef) ⇒
+    case Deafen(actorRef) =>
       listeners.remove(actorRef)
-    case value ⇒ {
+    case value => {
       if (timeoutFuture.isDefined) {
         timeoutFuture.get.cancel()
         timeoutFuture = None
@@ -691,9 +691,9 @@ trait FSM[S, D] extends Actor with Listeners with ActorLogging {
 
   private[akka] def applyState(nextState: State): Unit = {
     nextState.stopReason match {
-      case None ⇒ makeTransition(nextState)
-      case _ ⇒
-        nextState.replies.reverse foreach { r ⇒ sender() ! r }
+      case None => makeTransition(nextState)
+      case _ =>
+        nextState.replies.reverse foreach { r => sender() ! r }
         terminate(nextState)
         context.stop(self)
     }
@@ -703,7 +703,7 @@ trait FSM[S, D] extends Actor with Listeners with ActorLogging {
     if (!stateFunctions.contains(nextState.stateName)) {
       terminate(stay withStopReason Failure("Next state %s does not exist".format(nextState.stateName)))
     } else {
-      nextState.replies.reverse foreach { r ⇒ sender() ! r }
+      nextState.replies.reverse foreach { r => sender() ! r }
       if (currentState.stateName != nextState.stateName || nextState.notifies) {
         this.nextState = nextState
         handleTransition(currentState.stateName, nextState.stateName)
@@ -718,9 +718,9 @@ trait FSM[S, D] extends Actor with Listeners with ActorLogging {
       }
 
       currentState.timeout match {
-        case SomeMaxFiniteDuration                    ⇒ // effectively disable stateTimeout
-        case Some(d: FiniteDuration) if d.length >= 0 ⇒ timeoutFuture = scheduleTimeout(d)
-        case _ ⇒
+        case SomeMaxFiniteDuration                    => // effectively disable stateTimeout
+        case Some(d: FiniteDuration) if d.length >= 0 => timeoutFuture = scheduleTimeout(d)
+        case _ =>
           val timeout = stateTimeouts(currentState.stateName)
           if (timeout.isDefined) timeoutFuture = scheduleTimeout(timeout.get)
       }
@@ -748,7 +748,7 @@ trait FSM[S, D] extends Actor with Listeners with ActorLogging {
     if (currentState.stopReason.isEmpty) {
       val reason = nextState.stopReason.get
       logTermination(reason)
-      for (timer ← timers.values) timer.cancel()
+      for (timer <- timers.values) timer.cancel()
       timers.clear()
       timeoutFuture.foreach { _.cancel() }
       currentState = nextState
@@ -764,9 +764,9 @@ trait FSM[S, D] extends Actor with Listeners with ActorLogging {
    * types are not logged. It is possible to override this behavior.
    */
   protected def logTermination(reason: Reason): Unit = reason match {
-    case Failure(ex: Throwable) ⇒ log.error(ex, "terminating due to Failure")
-    case Failure(msg: AnyRef)   ⇒ log.error(msg.toString)
-    case _                      ⇒
+    case Failure(ex: Throwable) => log.error(ex, "terminating due to Failure")
+    case Failure(msg: AnyRef)   => log.error(msg.toString)
+    case _                      =>
   }
 }
 
@@ -776,7 +776,7 @@ trait FSM[S, D] extends Actor with Listeners with ActorLogging {
  *
  * @since 1.2
  */
-trait LoggingFSM[S, D] extends FSM[S, D] { this: Actor ⇒
+trait LoggingFSM[S, D] extends FSM[S, D] { this: Actor =>
 
   import FSM._
 
@@ -802,10 +802,10 @@ trait LoggingFSM[S, D] extends FSM[S, D] { this: Actor ⇒
   private[akka] abstract override def processEvent(event: Event, source: AnyRef): Unit = {
     if (debugEvent) {
       val srcstr = source match {
-        case s: String               ⇒ s
-        case Timer(name, _, _, _, _) ⇒ "timer " + name
-        case a: ActorRef             ⇒ a.toString
-        case _                       ⇒ "unknown"
+        case s: String               => s
+        case Timer(name, _, _, _, _) => "timer " + name
+        case a: ActorRef             => a.toString
+        case _                       => "unknown"
       }
       log.debug("processing {} from {} in state {}", event, srcstr, stateName)
     }
@@ -830,7 +830,7 @@ trait LoggingFSM[S, D] extends FSM[S, D] { this: Actor ⇒
    * The log entries are lost when this actor is restarted.
    */
   protected def getLog: IndexedSeq[LogEntry[S, D]] = {
-    val log = events zip states filter (_._1 ne null) map (x ⇒ LogEntry(x._2.asInstanceOf[S], x._1.stateData, x._1.event))
+    val log = events zip states filter (_._1 ne null) map (x => LogEntry(x._2.asInstanceOf[S], x._1.stateData, x._1.event))
     if (full) {
       IndexedSeq() ++ log.drop(pos) ++ log.take(pos)
     } else {

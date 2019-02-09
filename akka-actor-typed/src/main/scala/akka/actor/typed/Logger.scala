@@ -174,11 +174,11 @@ abstract class Logger private[akka] () {
    * will not actually end up in any logger output.
    */
   def isLevelEnabled(logLevel: LogLevel): Boolean = logLevel match {
-    case ErrorLevel   ⇒ isErrorEnabled
-    case WarningLevel ⇒ isWarningEnabled
-    case InfoLevel    ⇒ isInfoEnabled
-    case DebugLevel   ⇒ isDebugEnabled
-    case _            ⇒ false
+    case ErrorLevel   => isErrorEnabled
+    case WarningLevel => isWarningEnabled
+    case InfoLevel    => isInfoEnabled
+    case DebugLevel   => isDebugEnabled
+    case _            => false
   }
 
   // message only error logging

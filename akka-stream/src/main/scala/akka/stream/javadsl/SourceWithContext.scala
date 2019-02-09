@@ -36,14 +36,14 @@ final class SourceWithContext[+Ctx, +Out, +Mat](delegate: scaladsl.SourceWithCon
    * @see [[akka.stream.javadsl.Flow.via]]
    */
   def via[Ctx2, Out2, Mat2](viaFlow: Graph[FlowShape[Pair[Out @uncheckedVariance, Ctx @uncheckedVariance], Pair[Out2, Ctx2]], Mat2]): SourceWithContext[Ctx2, Out2, Mat] =
-    viaScala(_.via(akka.stream.scaladsl.Flow[(Out, Ctx)].map { case (o, c) ⇒ Pair(o, c) }.via(viaFlow).map(_.toScala)))
+    viaScala(_.via(akka.stream.scaladsl.Flow[(Out, Ctx)].map { case (o, c) => Pair(o, c) }.via(viaFlow).map(_.toScala)))
 
   /**
    * Stops automatic context propagation from here and converts this to a regular
    * stream of a pair of (data, context).
    */
   def endContextPropagation(): Source[Pair[Out @uncheckedVariance, Ctx @uncheckedVariance], Mat @uncheckedVariance] =
-    delegate.endContextPropagation.map { case (o, c) ⇒ Pair(o, c) }.asJava
+    delegate.endContextPropagation.map { case (o, c) => Pair(o, c) }.asJava
 
   // remaining operations in alphabetic order
 
@@ -96,7 +96,7 @@ final class SourceWithContext[+Ctx, +Out, +Mat](delegate: scaladsl.SourceWithCon
     viaScala(_.map(f.apply))
 
   def mapAsync[Out2](parallelism: Int, f: function.Function[Out, CompletionStage[Out2]]): SourceWithContext[Ctx, Out2, Mat] =
-    viaScala(_.mapAsync[Out2](parallelism)(o ⇒ f.apply(o).toScala))
+    viaScala(_.mapAsync[Out2](parallelism)(o => f.apply(o).toScala))
 
   /**
    * Context-preserving variant of [[akka.stream.javadsl.Source.mapConcat]].
@@ -127,7 +127,7 @@ final class SourceWithContext[+Ctx, +Out, +Mat](delegate: scaladsl.SourceWithCon
    * @see [[akka.stream.javadsl.Source.mapConcat]]
    */
   def mapConcat[Out2](f: function.Function[Out, _ <: java.lang.Iterable[Out2]]): SourceWithContext[Ctx, Out2, Mat] =
-    viaScala(_.mapConcat(elem ⇒ Util.immutableSeq(f.apply(elem))))
+    viaScala(_.mapConcat(elem => Util.immutableSeq(f.apply(elem))))
 
   /**
    * Apply the given function to each context element (leaving the data elements unchanged).
@@ -174,13 +174,13 @@ final class SourceWithContext[+Ctx, +Out, +Mat](delegate: scaladsl.SourceWithCon
    * @see [[akka.stream.javadsl.Source.statefulMapConcat]]
    */
   def statefulMapConcat[Out2](f: function.Creator[function.Function[Out, java.lang.Iterable[Out2]]]): SourceWithContext[Ctx, Out2, Mat] =
-    viaScala(_.statefulMapConcat { () ⇒
+    viaScala(_.statefulMapConcat { () =>
       val fun = f.create()
-      elem ⇒ Util.immutableSeq(fun(elem))
+      elem => Util.immutableSeq(fun(elem))
     })
 
   def asScala: scaladsl.SourceWithContext[Ctx, Out, Mat] = delegate
 
-  private[this] def viaScala[Ctx2, Out2, Mat2](f: scaladsl.SourceWithContext[Ctx, Out, Mat] ⇒ scaladsl.SourceWithContext[Ctx2, Out2, Mat2]): SourceWithContext[Ctx2, Out2, Mat2] =
+  private[this] def viaScala[Ctx2, Out2, Mat2](f: scaladsl.SourceWithContext[Ctx, Out, Mat] => scaladsl.SourceWithContext[Ctx2, Out2, Mat2]): SourceWithContext[Ctx2, Out2, Mat2] =
     new SourceWithContext(f(delegate))
 }

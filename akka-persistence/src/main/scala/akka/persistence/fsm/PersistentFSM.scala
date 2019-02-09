@@ -35,17 +35,17 @@ private[akka] object SnapshotAfter extends ExtensionId[SnapshotAfter] with Exten
 private[akka] class SnapshotAfter(config: Config) extends Extension {
   val key = "akka.persistence.fsm.snapshot-after"
   val snapshotAfterValue = config.getString(key).toLowerCase match {
-    case "off" ⇒ None
-    case _     ⇒ Some(config.getInt(key))
+    case "off" => None
+    case _     => Some(config.getInt(key))
   }
 
   /**
    * Function that takes lastSequenceNr as the param, and returns whether the passed
    * sequence number should trigger auto snapshot or not
    */
-  val isSnapshotAfterSeqNo: Long ⇒ Boolean = snapshotAfterValue match {
-    case Some(snapShotAfterValue) ⇒ seqNo: Long ⇒ seqNo % snapShotAfterValue == 0
-    case None ⇒ seqNo: Long ⇒ false //always false, if snapshotAfter is not specified in config
+  val isSnapshotAfterSeqNo: Long => Boolean = snapshotAfterValue match {
+    case Some(snapShotAfterValue) => seqNo: Long => seqNo % snapShotAfterValue == 0
+    case None => seqNo: Long => false //always false, if snapshotAfter is not specified in config
   }
 }
 
@@ -80,7 +80,7 @@ trait PersistentFSM[S <: FSMState, D, E] extends PersistentActor with Persistent
   /**
    * Map from state identifier to state instance
    */
-  lazy val statesMap: Map[String, S] = stateNames.map(name ⇒ (name.identifier, name)).toMap
+  lazy val statesMap: Map[String, S] = stateNames.map(name => (name.identifier, name)).toMap
 
   /**
    * Timeout set for the current state. Used when saving a snapshot
@@ -119,10 +119,10 @@ trait PersistentFSM[S <: FSMState, D, E] extends PersistentActor with Persistent
    * Discover the latest recorded state
    */
   override def receiveRecover: Receive = {
-    case domainEventTag(event) ⇒ startWith(stateName, applyEvent(event, stateData))
-    case StateChangeEvent(stateIdentifier, timeout) ⇒ startWith(statesMap(stateIdentifier), stateData, timeout)
-    case SnapshotOffer(_, PersistentFSMSnapshot(stateIdentifier, data: D, timeout)) ⇒ startWith(statesMap(stateIdentifier), data, timeout)
-    case RecoveryCompleted ⇒
+    case domainEventTag(event) => startWith(stateName, applyEvent(event, stateData))
+    case StateChangeEvent(stateIdentifier, timeout) => startWith(statesMap(stateIdentifier), stateData, timeout)
+    case SnapshotOffer(_, PersistentFSMSnapshot(stateIdentifier, data: D, timeout)) => startWith(statesMap(stateIdentifier), data, timeout)
+    case RecoveryCompleted =>
       initialize()
       onRecoveryCompleted()
   }
@@ -163,11 +163,11 @@ trait PersistentFSM[S <: FSMState, D, E] extends PersistentActor with Persistent
       }
 
       persistAll[Any](eventsToPersist) {
-        case domainEventTag(event) ⇒
+        case domainEventTag(event) =>
           nextData = applyEvent(event, nextData)
           doSnapshot = doSnapshot || snapshotAfterExtension.isSnapshotAfterSeqNo(lastSequenceNr)
           applyStateOnLastHandler()
-        case StateChangeEvent(stateIdentifier, timeout) ⇒
+        case StateChangeEvent(stateIdentifier, timeout) =>
           doSnapshot = doSnapshot || snapshotAfterExtension.isSnapshotAfterSeqNo(lastSequenceNr)
           applyStateOnLastHandler()
       }
@@ -299,8 +299,8 @@ object PersistentFSM {
 
     def schedule(actor: ActorRef, timeout: FiniteDuration): Unit = {
       val timerMsg = msg match {
-        case m: AutoReceivedMessage ⇒ m
-        case _                      ⇒ this
+        case m: AutoReceivedMessage => m
+        case _                      => this
       }
       ref = Some(
         if (repeat) scheduler.schedule(timeout, timeout, actor, timerMsg)
@@ -340,13 +340,13 @@ object PersistentFSM {
     stopReason:        Option[Reason]         = None,
     replies:           List[Any]              = Nil,
     domainEvents:      Seq[E]                 = Nil,
-    afterTransitionDo: D ⇒ Unit               = { _: D ⇒ })(private[akka] val notifies: Boolean = true) {
+    afterTransitionDo: D => Unit               = { _: D => })(private[akka] val notifies: Boolean = true) {
 
     /**
      * Copy object and update values if needed.
      */
     @InternalApi
-    private[akka] def copy(stateName: S = stateName, stateData: D = stateData, timeout: Option[FiniteDuration] = timeout, stopReason: Option[Reason] = stopReason, replies: List[Any] = replies, notifies: Boolean = notifies, domainEvents: Seq[E] = domainEvents, afterTransitionDo: D ⇒ Unit = afterTransitionDo): State[S, D, E] = {
+    private[akka] def copy(stateName: S = stateName, stateData: D = stateData, timeout: Option[FiniteDuration] = timeout, stopReason: Option[Reason] = stopReason, replies: List[Any] = replies, notifies: Boolean = notifies, domainEvents: Seq[E] = domainEvents, afterTransitionDo: D => Unit = afterTransitionDo): State[S, D, E] = {
       State(stateName, stateData, timeout, stopReason, replies, domainEvents, afterTransitionDo)(notifies)
     }
 
@@ -358,8 +358,8 @@ object PersistentFSM {
      * Use Duration.Inf to deactivate an existing timeout.
      */
     def forMax(timeout: Duration): State[S, D, E] = timeout match {
-      case f: FiniteDuration ⇒ copy(timeout = Some(f))
-      case _                 ⇒ copy(timeout = PersistentFSM.SomeMaxFiniteDuration) // we need to differentiate "not set" from disabled
+      case f: FiniteDuration => copy(timeout = Some(f))
+      case _                 => copy(timeout = PersistentFSM.SomeMaxFiniteDuration) // we need to differentiate "not set" from disabled
     }
 
     /**
@@ -413,7 +413,7 @@ object PersistentFSM {
     /**
      * Register a handler to be triggered after the state has been persisted successfully
      */
-    def andThen(handler: D ⇒ Unit): State[S, D, E] = {
+    def andThen(handler: D => Unit): State[S, D, E] = {
       copy(afterTransitionDo = handler)
     }
   }
@@ -446,8 +446,8 @@ abstract class AbstractPersistentFSM[S <: FSMState, D, E] extends AbstractPersis
    * @param action - Java 8 lambda expression defining the action
    * @return action represented as a Scala Functin
    */
-  final def exec(action: Consumer[D]): D ⇒ Unit =
-    data ⇒ action.accept(data)
+  final def exec(action: Consumer[D]): D => Unit =
+    data => action.accept(data)
 
   /**
    * Adapter from Java [[Class]] to [[scala.reflect.ClassTag]]

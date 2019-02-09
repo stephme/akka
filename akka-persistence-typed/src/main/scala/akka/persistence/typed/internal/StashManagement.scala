@@ -15,7 +15,7 @@ import akka.persistence.DiscardToDeadLetterStrategy
 import akka.persistence.ReplyToStrategy
 import akka.persistence.ThrowOverflowExceptionStrategy
 import akka.util.ConstantFun
-import akka.{ actor ⇒ untyped }
+import akka.{ actor => untyped }
 
 /** INTERNAL API: Stash management for persistent behaviors */
 @InternalApi
@@ -46,16 +46,16 @@ private[akka] trait StashManagement[C, E, S] {
     logStashMessage(msg, buffer)
 
     try buffer.stash(msg) catch {
-      case e: StashOverflowException ⇒
+      case e: StashOverflowException =>
         setup.stashOverflowStrategy match {
-          case DiscardToDeadLetterStrategy ⇒
+          case DiscardToDeadLetterStrategy =>
             val noSenderBecauseAkkaTyped: ActorRef = untyped.ActorRef.noSender
             context.system.deadLetters.tell(DeadLetter(msg, noSenderBecauseAkkaTyped, context.self.toUntyped))
 
-          case ReplyToStrategy(_) ⇒
+          case ReplyToStrategy(_) =>
             throw new RuntimeException("ReplyToStrategy does not make sense at all in Akka Typed, since there is no sender()!")
 
-          case ThrowOverflowExceptionStrategy ⇒
+          case ThrowOverflowExceptionStrategy =>
             throw e
         }
     }
