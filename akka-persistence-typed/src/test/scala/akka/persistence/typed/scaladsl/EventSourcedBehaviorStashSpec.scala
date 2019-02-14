@@ -24,8 +24,7 @@ import com.typesafe.config.ConfigFactory
 import org.scalatest.WordSpecLike
 
 object EventSourcedBehaviorStashSpec {
-  def conf: Config = ConfigFactory.parseString(
-    s"""
+  def conf: Config = ConfigFactory.parseString(s"""
     #akka.loglevel = DEBUG
     #akka.persistence.typed.log-stashing = on
     akka.persistence.journal.plugin = "akka.persistence.journal.inmem"
@@ -49,7 +48,8 @@ object EventSourcedBehaviorStashSpec {
   final case class GetValue(replyTo: ActorRef[State]) extends Command[State]
   final case class Unhandled(replyTo: ActorRef[NotUsed]) extends Command[NotUsed]
   final case class Throw(id: String, t: Throwable, override val replyTo: ActorRef[Ack]) extends Command[Ack]
-  final case class IncrementThenThrow(id: String, t: Throwable, override val replyTo: ActorRef[Ack]) extends Command[Ack]
+  final case class IncrementThenThrow(id: String, t: Throwable, override val replyTo: ActorRef[Ack])
+      extends Command[Ack]
   final case class Slow(id: String, latch: CountDownLatch, override val replyTo: ActorRef[Ack]) extends Command[Ack]
 
   final case class Ack(id: String)
@@ -63,49 +63,49 @@ object EventSourcedBehaviorStashSpec {
   final case class State(value: Int, active: Boolean)
 
   def counter(persistenceId: PersistenceId): Behavior[Command[_]] =
-    Behaviors.supervise[Command[_]] {
-      Behaviors.setup(_ => eventSourcedCounter(persistenceId))
-    }.onFailure(SupervisorStrategy.restart.withLoggingEnabled(enabled = false))
+    Behaviors
+      .supervise[Command[_]] {
+        Behaviors.setup(_ => eventSourcedCounter(persistenceId))
+      }
+      .onFailure(SupervisorStrategy.restart.withLoggingEnabled(enabled = false))
 
-  def eventSourcedCounter(
-    persistenceId: PersistenceId): EventSourcedBehavior[Command[_], Event, State] = {
-    EventSourcedBehavior.withEnforcedReplies[Command[_], Event, State](
-      persistenceId,
-      emptyState = State(0, active = true),
-      commandHandler = (state, command) => {
-        if (state.active) active(state, command)
-        else inactive(state, command)
-      },
-      eventHandler = (state, evt) => evt match {
-        case Incremented(delta) =>
-          if (!state.active) throw new IllegalStateException
-          State(state.value + delta, active = true)
-        case ValueUpdated(value) =>
-          State(value, active = state.active)
-        case Activated =>
-          if (state.active) throw new IllegalStateException
-          state.copy(active = true)
-        case Deactivated =>
-          if (!state.active) throw new IllegalStateException
-          state.copy(active = false)
-      })
-      .onPersistFailure(SupervisorStrategy.restartWithBackoff(1.second, maxBackoff = 2.seconds, 0.0)
+  def eventSourcedCounter(persistenceId: PersistenceId): EventSourcedBehavior[Command[_], Event, State] = {
+    EventSourcedBehavior
+      .withEnforcedReplies[Command[_], Event, State](persistenceId,
+                                                     emptyState = State(0, active = true),
+                                                     commandHandler = (state, command) => {
+                                                       if (state.active) active(state, command)
+                                                       else inactive(state, command)
+                                                     },
+                                                     eventHandler = (state, evt) =>
+                                                       evt match {
+                                                         case Incremented(delta) =>
+                                                           if (!state.active) throw new IllegalStateException
+                                                           State(state.value + delta, active = true)
+                                                         case ValueUpdated(value) =>
+                                                           State(value, active = state.active)
+                                                         case Activated =>
+                                                           if (state.active) throw new IllegalStateException
+                                                           state.copy(active = true)
+                                                         case Deactivated =>
+                                                           if (!state.active) throw new IllegalStateException
+                                                           state.copy(active = false)
+                                                       })
+      .onPersistFailure(SupervisorStrategy
+        .restartWithBackoff(1.second, maxBackoff = 2.seconds, 0.0)
         .withLoggingEnabled(enabled = false))
   }
 
   private def active(state: State, command: Command[_]): ReplyEffect[Event, State] = {
     command match {
       case cmd: Increment =>
-        Effect.persist(Incremented(1))
-          .thenReply(cmd)(_ => Ack(cmd.id))
+        Effect.persist(Incremented(1)).thenReply(cmd)(_ => Ack(cmd.id))
       case cmd @ UpdateValue(_, value, _) =>
-        Effect.persist(ValueUpdated(value))
-          .thenReply(cmd)(_ => Ack(cmd.id))
+        Effect.persist(ValueUpdated(value)).thenReply(cmd)(_ => Ack(cmd.id))
       case query: GetValue =>
         Effect.reply(query)(state)
       case cmd: Deactivate =>
-        Effect.persist(Deactivated)
-          .thenReply(cmd)(_ => Ack(cmd.id))
+        Effect.persist(Deactivated).thenReply(cmd)(_ => Ack(cmd.id))
       case cmd: Activate =>
         // already active
         Effect.reply(cmd)(Ack(cmd.id))
@@ -115,9 +115,7 @@ object EventSourcedBehaviorStashSpec {
         replyTo ! Ack(id)
         throw t
       case cmd: IncrementThenThrow =>
-        Effect.persist(Incremented(1))
-          .thenRun((_: State) => throw cmd.t)
-          .thenNoReply()
+        Effect.persist(Incremented(1)).thenRun((_: State) => throw cmd.t).thenNoReply()
       case cmd: Slow =>
         cmd.latch.await(30, TimeUnit.SECONDS)
         Effect.reply(cmd)(Ack(cmd.id))
@@ -129,17 +127,14 @@ object EventSourcedBehaviorStashSpec {
       case _: Increment =>
         Effect.stash()
       case cmd @ UpdateValue(_, value, _) =>
-        Effect.persist(ValueUpdated(value))
-          .thenReply(cmd)(_ => Ack(cmd.id))
+        Effect.persist(ValueUpdated(value)).thenReply(cmd)(_ => Ack(cmd.id))
       case query: GetValue =>
         Effect.reply(query)(state)
       case cmd: Deactivate =>
         // already inactive
         Effect.reply(cmd)(Ack(cmd.id))
       case cmd: Activate =>
-        Effect.persist(Activated)
-          .thenUnstashAll()
-          .thenReply(cmd)(_ => Ack(cmd.id))
+        Effect.persist(Activated).thenUnstashAll().thenReply(cmd)(_ => Ack(cmd.id))
       case _: Unhandled =>
         Effect.unhandled.thenNoReply()
       case Throw(id, t, replyTo) =>
@@ -153,7 +148,9 @@ object EventSourcedBehaviorStashSpec {
   }
 }
 
-class EventSourcedBehaviorStashSpec extends ScalaTestWithActorTestKit(EventSourcedBehaviorStashSpec.conf) with WordSpecLike {
+class EventSourcedBehaviorStashSpec
+    extends ScalaTestWithActorTestKit(EventSourcedBehaviorStashSpec.conf)
+    with WordSpecLike {
 
   import EventSourcedBehaviorStashSpec._
 

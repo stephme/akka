@@ -8,7 +8,7 @@ import akka.actor._
 import akka.pattern.{ Backoff, BackoffSupervisor }
 import akka.persistence._
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{ Source, Sink, Flow }
+import akka.stream.scaladsl.{ Flow, Sink, Source }
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -51,7 +51,7 @@ object PersistenceDocSpec {
         case RecoveryCompleted =>
         // perform init after recovery, before any other messages
         //...
-        case evt               => //...
+        case evt => //...
       }
 
       override def receiveCommand: Receive = {
@@ -98,13 +98,12 @@ object PersistenceDocSpec {
       //#backoff
       val childProps = Props[MyPersistentActor]
       val props = BackoffSupervisor.props(
-        Backoff.onStop(
-          childProps,
-          childName = "myActor",
-          minBackoff = 3.seconds,
-          maxBackoff = 30.seconds,
-          randomFactor = 0.2,
-          maxNrOfRetries = -1))
+        Backoff.onStop(childProps,
+                       childName = "myActor",
+                       minBackoff = 3.seconds,
+                       maxBackoff = 30.seconds,
+                       randomFactor = 0.2,
+                       maxNrOfRetries = -1))
       context.actorOf(props, name = "mySupervisor")
       //#backoff
     }
@@ -123,8 +122,7 @@ object PersistenceDocSpec {
     case class MsgSent(s: String) extends Evt
     case class MsgConfirmed(deliveryId: Long) extends Evt
 
-    class MyPersistentActor(destination: ActorSelection)
-      extends PersistentActor with AtLeastOnceDelivery {
+    class MyPersistentActor(destination: ActorSelection) extends PersistentActor with AtLeastOnceDelivery {
 
       override def persistenceId: String = "persistence-id"
 
@@ -187,9 +185,9 @@ object PersistenceDocSpec {
       override def persistenceId = "my-stable-persistence-id"
 
       //#snapshot-criteria
-      override def recovery = Recovery(fromSnapshot = SnapshotSelectionCriteria(
-        maxSequenceNr = 457L,
-        maxTimestamp = System.currentTimeMillis))
+      override def recovery =
+        Recovery(
+          fromSnapshot = SnapshotSelectionCriteria(maxSequenceNr = 457L, maxTimestamp = System.currentTimeMillis))
       //#snapshot-criteria
 
       //#snapshot-offer
@@ -221,8 +219,12 @@ object PersistenceDocSpec {
       override def receiveCommand: Receive = {
         case c: String => {
           sender() ! c
-          persistAsync(s"evt-$c-1") { e => sender() ! e }
-          persistAsync(s"evt-$c-2") { e => sender() ! e }
+          persistAsync(s"evt-$c-1") { e =>
+            sender() ! e
+          }
+          persistAsync(s"evt-$c-2") { e =>
+            sender() ! e
+          }
         }
       }
     }
@@ -256,9 +258,15 @@ object PersistenceDocSpec {
       override def receiveCommand: Receive = {
         case c: String => {
           sender() ! c
-          persistAsync(s"evt-$c-1") { e => sender() ! e }
-          persistAsync(s"evt-$c-2") { e => sender() ! e }
-          deferAsync(s"evt-$c-3") { e => sender() ! e }
+          persistAsync(s"evt-$c-1") { e =>
+            sender() ! e
+          }
+          persistAsync(s"evt-$c-2") { e =>
+            sender() ! e
+          }
+          deferAsync(s"evt-$c-3") { e =>
+            sender() ! e
+          }
         }
       }
     }
@@ -294,9 +302,15 @@ object PersistenceDocSpec {
       override def receiveCommand: Receive = {
         case c: String => {
           sender() ! c
-          persist(s"evt-$c-1") { e => sender() ! e }
-          persist(s"evt-$c-2") { e => sender() ! e }
-          defer(s"evt-$c-3") { e => sender() ! e }
+          persist(s"evt-$c-1") { e =>
+            sender() ! e
+          }
+          persist(s"evt-$c-2") { e =>
+            sender() ! e
+          }
+          defer(s"evt-$c-3") { e =>
+            sender() ! e
+          }
         }
       }
     }
@@ -366,11 +380,15 @@ object PersistenceDocSpec {
           sender() ! c
           persistAsync(c + "-outer-1") { outer =>
             sender() ! outer
-            persistAsync(c + "-inner-1") { inner => sender() ! inner }
+            persistAsync(c + "-inner-1") { inner =>
+              sender() ! inner
+            }
           }
           persistAsync(c + "-outer-2") { outer =>
             sender() ! outer
-            persistAsync(c + "-inner-2") { inner => sender() ! inner }
+            persistAsync(c + "-inner-2") { inner =>
+              sender() ! inner
+            }
           }
       }
       //#nested-persistAsync-persistAsync

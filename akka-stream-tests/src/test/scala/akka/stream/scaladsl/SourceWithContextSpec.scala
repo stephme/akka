@@ -33,7 +33,8 @@ class SourceWithContextSpec extends StreamSpec {
       Source(Vector(msg))
         .startContextPropagation(_.offset)
         .map(_.data)
-        .endContextPropagation.map { case (e, _) => e }
+        .endContextPropagation
+        .map { case (e, _) => e }
         .runWith(TestSink.probe[String])
         .request(1)
         .expectNext("a")
@@ -41,9 +42,7 @@ class SourceWithContextSpec extends StreamSpec {
     }
 
     "pass through contexts using map and filter" in {
-      Source(
-        Vector(Message("A", 1L), Message("B", 2L), Message("D", 3L), Message("C", 4L))
-      )
+      Source(Vector(Message("A", 1L), Message("B", 2L), Message("D", 3L), Message("C", 4L)))
         .startContextPropagation(_.offset)
         .map(_.data.toLowerCase)
         .filter(_ != "b")

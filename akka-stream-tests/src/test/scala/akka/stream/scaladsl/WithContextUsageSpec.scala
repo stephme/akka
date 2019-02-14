@@ -26,17 +26,17 @@ class WithContextUsageSpec extends StreamSpec {
       val f: (Record => Record) = record => record.copy(value = record.value + 1)
       val expectedRecords = toRecords(input).map(f)
 
-      val src = createSourceWithContext(input)
-        .map(f)
-        .endContextPropagation
+      val src = createSourceWithContext(input).map(f).endContextPropagation
 
-      src.map { case (e, _) => e }
+      src
+        .map { case (e, _) => e }
         .runWith(TestSink.probe[Record])
         .request(input.size)
         .expectNextN(expectedRecords)
         .expectComplete()
 
-      src.map { case (_, ctx) => ctx }
+      src
+        .map { case (_, ctx) => ctx }
         .toMat(commitOffsets)(Keep.right)
         .run()
         .request(input.size)
@@ -52,17 +52,17 @@ class WithContextUsageSpec extends StreamSpec {
       val expectedOffsets = input.filter(cm => f(cm.record)).map(cm => Offset(cm)).init
       val expectedRecords = toRecords(input).filter(f)
 
-      val src = createSourceWithContext(input)
-        .filter(f)
-        .endContextPropagation
+      val src = createSourceWithContext(input).filter(f).endContextPropagation
 
-      src.map { case (e, _) => e }
+      src
+        .map { case (e, _) => e }
         .runWith(TestSink.probe[Record])
         .request(input.size)
         .expectNextN(expectedRecords)
         .expectComplete()
 
-      src.map { case (_, ctx) => ctx }
+      src
+        .map { case (_, ctx) => ctx }
         .toMat(commitOffsets)(Keep.right)
         .run()
         .request(input.size)
@@ -78,17 +78,17 @@ class WithContextUsageSpec extends StreamSpec {
       val expectedOffsets = testRange.map(ix => Offset(ix)).init
       val expectedRecords = toRecords(input).flatMap(f)
 
-      val src = createSourceWithContext(input)
-        .mapConcat(f)
-        .endContextPropagation
+      val src = createSourceWithContext(input).mapConcat(f).endContextPropagation
 
-      src.map { case (e, _) => e }
+      src
+        .map { case (e, _) => e }
         .runWith(TestSink.probe[Record])
         .request(expectedRecords.size)
         .expectNextN(expectedRecords)
         .expectComplete()
 
-      src.map { case (_, ctx) => ctx }
+      src
+        .map { case (_, ctx) => ctx }
         .toMat(commitOffsets)(Keep.right)
         .run()
         .request(input.size)
@@ -110,13 +110,15 @@ class WithContextUsageSpec extends StreamSpec {
         .mapContext(_.last)
         .endContextPropagation
 
-      src.map { case (e, _) => e }
+      src
+        .map { case (e, _) => e }
         .runWith(TestSink.probe[MultiRecord])
         .request(expectedMultiRecords.size)
         .expectNextN(expectedMultiRecords)
         .expectComplete()
 
-      src.map { case (_, ctx) => ctx }
+      src
+        .map { case (_, ctx) => ctx }
         .toMat(commitOffsets)(Keep.right)
         .run()
         .request(input.size)
@@ -143,13 +145,15 @@ class WithContextUsageSpec extends StreamSpec {
         .mapContext(_.last)
         .endContextPropagation
 
-      src.map { case (e, _) => e }
+      src
+        .map { case (e, _) => e }
         .runWith(TestSink.probe[MultiRecord])
         .request(expectedMultiRecords.size)
         .expectNextN(expectedMultiRecords)
         .expectComplete()
 
-      src.map { case (_, ctx) => ctx }
+      src
+        .map { case (_, ctx) => ctx }
         .toMat(commitOffsets)(Keep.right)
         .run()
         .request(input.size)
@@ -157,13 +161,17 @@ class WithContextUsageSpec extends StreamSpec {
         .expectComplete()
     }
 
-    def genInput(range: Range) = range.map(ix => Consumer.CommittableMessage(Record(genKey(ix), genValue(ix)), Consumer.CommittableOffsetImpl(ix))).toVector
+    def genInput(range: Range) =
+      range
+        .map(ix => Consumer.CommittableMessage(Record(genKey(ix), genValue(ix)), Consumer.CommittableOffsetImpl(ix)))
+        .toVector
     def toRecords(committableMessages: Vector[Consumer.CommittableMessage[Record]]) = committableMessages.map(_.record)
     def genKey(ix: Int) = s"k$ix"
     def genValue(ix: Int) = s"v$ix"
   }
 
-  def createSourceWithContext(committableMessages: Vector[Consumer.CommittableMessage[Record]]): SourceWithContext[Offset, Record, NotUsed] =
+  def createSourceWithContext(
+      committableMessages: Vector[Consumer.CommittableMessage[Record]]): SourceWithContext[Offset, Record, NotUsed] =
     Consumer
       .committableSource(committableMessages)
       .startContextPropagation(m => Offset(m.committableOffset.offset))
@@ -172,19 +180,21 @@ class WithContextUsageSpec extends StreamSpec {
   def commitOffsets = commit[Offset](Offset.Uninitialized)
   def commit[Ctx](uninitialized: Ctx): Sink[Ctx, Probe[Ctx]] = {
     val testSink = TestSink.probe[Ctx]
-    Flow[Ctx].statefulMapConcat { () =>
-      {
-        var prevCtx: Ctx = uninitialized
-        ctx => {
-          val res =
-            if (prevCtx != uninitialized && ctx != prevCtx) Vector(prevCtx)
-            else Vector.empty[Ctx]
+    Flow[Ctx]
+      .statefulMapConcat { () =>
+        {
+          var prevCtx: Ctx = uninitialized
+          ctx => {
+            val res =
+              if (prevCtx != uninitialized && ctx != prevCtx) Vector(prevCtx)
+              else Vector.empty[Ctx]
 
-          prevCtx = ctx
-          res
+            prevCtx = ctx
+            res
+          }
         }
       }
-    }.toMat(testSink)(Keep.right)
+      .toMat(testSink)(Keep.right)
   }
 }
 
@@ -200,7 +210,8 @@ case class Committed[R](record: R, offset: Int)
 case class MultiRecord(records: immutable.Seq[Record])
 
 object Consumer {
-  def committableSource(committableMessages: Vector[CommittableMessage[Record]]): Source[CommittableMessage[Record], NotUsed] = {
+  def committableSource(
+      committableMessages: Vector[CommittableMessage[Record]]): Source[CommittableMessage[Record], NotUsed] = {
     Source(committableMessages)
   }
   case class CommittableMessage[V](record: V, committableOffset: CommittableOffset)

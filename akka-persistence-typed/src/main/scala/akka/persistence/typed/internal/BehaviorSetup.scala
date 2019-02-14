@@ -25,24 +25,22 @@ import akka.util.OptionVal
  * INTERNAL API: Carry state for the Persistent behavior implementation behaviors.
  */
 @InternalApi
-private[akka] final class BehaviorSetup[C, E, S](
-  val context:               ActorContext[InternalProtocol],
-  val persistenceId:         PersistenceId,
-  val emptyState:            S,
-  val commandHandler:        EventSourcedBehavior.CommandHandler[C, E, S],
-  val eventHandler:          EventSourcedBehavior.EventHandler[S, E],
-  val writerIdentity:        EventSourcedBehaviorImpl.WriterIdentity,
-  val recoveryCompleted:     S => Unit,
-  val onRecoveryFailure:     Throwable => Unit,
-  val onSnapshot:            (SnapshotMetadata, Try[Done]) => Unit,
-  val tagger:                E => Set[String],
-  val eventAdapter:          EventAdapter[E, _],
-  val snapshotWhen:          (S, E, Long) => Boolean,
-  val recovery:              Recovery,
-  var holdingRecoveryPermit: Boolean,
-  val settings:              EventSourcedSettings,
-  val stashState:            StashState
-) {
+private[akka] final class BehaviorSetup[C, E, S](val context: ActorContext[InternalProtocol],
+                                                 val persistenceId: PersistenceId,
+                                                 val emptyState: S,
+                                                 val commandHandler: EventSourcedBehavior.CommandHandler[C, E, S],
+                                                 val eventHandler: EventSourcedBehavior.EventHandler[S, E],
+                                                 val writerIdentity: EventSourcedBehaviorImpl.WriterIdentity,
+                                                 val recoveryCompleted: S => Unit,
+                                                 val onRecoveryFailure: Throwable => Unit,
+                                                 val onSnapshot: (SnapshotMetadata, Try[Done]) => Unit,
+                                                 val tagger: E => Set[String],
+                                                 val eventAdapter: EventAdapter[E, _],
+                                                 val snapshotWhen: (S, E, Long) => Boolean,
+                                                 val recovery: Recovery,
+                                                 var holdingRecoveryPermit: Boolean,
+                                                 val settings: EventSourcedSettings,
+                                                 val stashState: StashState) {
   import InternalProtocol.RecoveryTickEvent
   import akka.actor.typed.scaladsl.adapter._
 
@@ -53,8 +51,11 @@ private[akka] final class BehaviorSetup[C, E, S](
 
   val stashOverflowStrategy: StashOverflowStrategy = {
     val system = context.system.toUntyped.asInstanceOf[ExtendedActorSystem]
-    system.dynamicAccess.createInstanceFor[StashOverflowStrategyConfigurator](settings.stashOverflowStrategyConfigurator, EmptyImmutableSeq)
-      .map(_.create(system.settings.config)).get
+    system.dynamicAccess
+      .createInstanceFor[StashOverflowStrategyConfigurator](settings.stashOverflowStrategyConfigurator,
+                                                            EmptyImmutableSeq)
+      .map(_.create(system.settings.config))
+      .get
   }
 
   def selfUntyped = context.self.toUntyped
@@ -64,7 +65,7 @@ private[akka] final class BehaviorSetup[C, E, S](
   def log: Logger = {
     _log match {
       case OptionVal.Some(l) => l
-      case OptionVal.None =>
+      case OptionVal.None    =>
         // lazy init if mdc changed
         val l = context.log.withMdc(mdc)
         _log = OptionVal.Some(l)
@@ -91,11 +92,13 @@ private[akka] final class BehaviorSetup[C, E, S](
     implicit val ec: ExecutionContext = context.executionContext
     val timer =
       if (snapshot)
-        context.system.scheduler.scheduleOnce(settings.recoveryEventTimeout, context.self.toUntyped,
-          RecoveryTickEvent(snapshot = true))
+        context.system.scheduler
+          .scheduleOnce(settings.recoveryEventTimeout, context.self.toUntyped, RecoveryTickEvent(snapshot = true))
       else
-        context.system.scheduler.schedule(settings.recoveryEventTimeout, settings.recoveryEventTimeout,
-          context.self.toUntyped, RecoveryTickEvent(snapshot = false))
+        context.system.scheduler.schedule(settings.recoveryEventTimeout,
+                                          settings.recoveryEventTimeout,
+                                          context.self.toUntyped,
+                                          RecoveryTickEvent(snapshot = false))
     recoveryTimer = OptionVal.Some(timer)
   }
 
@@ -123,9 +126,6 @@ private[akka] object MDC {
   // format: ON
 
   def create(persistenceId: PersistenceId, phaseName: String): Map[String, Any] = {
-    Map(
-      "persistenceId" -> persistenceId.id,
-      "phase" -> phaseName
-    )
+    Map("persistenceId" -> persistenceId.id, "phase" -> phaseName)
   }
 }

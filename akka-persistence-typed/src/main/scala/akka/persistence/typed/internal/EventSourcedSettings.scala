@@ -36,14 +36,12 @@ import com.typesafe.config.Config
     val recoveryEventTimeout: FiniteDuration =
       journalConfig.getDuration("recovery-event-timeout", TimeUnit.MILLISECONDS).millis
 
-    EventSourcedSettings(
-      stashCapacity = stashCapacity,
-      stashOverflowStrategyConfigurator,
-      logOnStashing = logOnStashing,
-      recoveryEventTimeout,
-      journalPluginId,
-      snapshotPluginId
-    )
+    EventSourcedSettings(stashCapacity = stashCapacity,
+                         stashOverflowStrategyConfigurator,
+                         logOnStashing = logOnStashing,
+                         recoveryEventTimeout,
+                         journalPluginId,
+                         snapshotPluginId)
   }
 
   /**
@@ -52,23 +50,21 @@ import com.typesafe.config.Config
   private[akka] final def journalConfigFor(config: Config, journalPluginId: String): Config = {
     val defaultJournalPluginId = config.getString("akka.persistence.journal.plugin")
     val configPath = if (journalPluginId == "") defaultJournalPluginId else journalPluginId
-    config.getConfig(configPath)
-      .withFallback(config.getConfig(Persistence.JournalFallbackConfigPath))
+    config.getConfig(configPath).withFallback(config.getConfig(Persistence.JournalFallbackConfigPath))
   }
 
 }
 
 @InternalApi
-private[akka] final case class EventSourcedSettings(
-  stashCapacity:                     Int,
-  stashOverflowStrategyConfigurator: String,
-  logOnStashing:                     Boolean,
-  recoveryEventTimeout:              FiniteDuration,
-  journalPluginId:                   String,
-  snapshotPluginId:                  String) {
+private[akka] final case class EventSourcedSettings(stashCapacity: Int,
+                                                    stashOverflowStrategyConfigurator: String,
+                                                    logOnStashing: Boolean,
+                                                    recoveryEventTimeout: FiniteDuration,
+                                                    journalPluginId: String,
+                                                    snapshotPluginId: String) {
 
   require(journalPluginId != null, "journal plugin id must not be null; use empty string for 'default' journal")
-  require(snapshotPluginId != null, "snapshot plugin id must not be null; use empty string for 'default' snapshot store")
+  require(snapshotPluginId != null,
+          "snapshot plugin id must not be null; use empty string for 'default' snapshot store")
 
 }
-

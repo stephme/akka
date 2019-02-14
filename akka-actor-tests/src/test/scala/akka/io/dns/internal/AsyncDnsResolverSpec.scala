@@ -21,8 +21,7 @@ import scala.concurrent.duration._
 import scala.collection.{ immutable => im }
 import scala.concurrent.duration._
 
-class AsyncDnsResolverSpec extends AkkaSpec(
-  """
+class AsyncDnsResolverSpec extends AkkaSpec("""
     akka.loglevel = DEBUG
     akka.loggers = ["akka.testkit.SilenceAllTestEventListener"]
   """) with ImplicitSender with WithLogCapturing {
@@ -122,8 +121,7 @@ class AsyncDnsResolverSpec extends AkkaSpec(
       dnsClient1.expectNoMessage(50.millis)
       val answer = expectMsgType[Resolved]
       answer.records.collect { case r: ARecord => r }.toSet shouldEqual Set(
-        ARecord("127.0.0.1", Ttl.effectivelyForever, InetAddress.getByName("127.0.0.1"))
-      )
+        ARecord("127.0.0.1", Ttl.effectivelyForever, InetAddress.getByName("127.0.0.1")))
     }
 
     "response immediately for IPv6 address" in {
@@ -133,7 +131,9 @@ class AsyncDnsResolverSpec extends AkkaSpec(
       r ! Resolve(name)
       dnsClient1.expectNoMessage(50.millis)
       val answer = expectMsgType[Resolved]
-      val Seq(AAAARecord("1:2:3:0:0:0:0:0", Ttl.effectivelyForever, _)) = answer.records.collect { case r: AAAARecord => r }
+      val Seq(AAAARecord("1:2:3:0:0:0:0:0", Ttl.effectivelyForever, _)) = answer.records.collect {
+        case r: AAAARecord => r
+      }
     }
 
     "return additional records for SRV requests" in {
@@ -155,8 +155,8 @@ class AsyncDnsResolverSpec extends AkkaSpec(
   }
 
   def resolver(clients: List[ActorRef]): ActorRef = {
-    val settings = new DnsSettings(system.asInstanceOf[ExtendedActorSystem], ConfigFactory.parseString(
-      """
+    val settings = new DnsSettings(system.asInstanceOf[ExtendedActorSystem],
+                                   ConfigFactory.parseString("""
           nameservers = ["one","two"]
           resolve-timeout = 25ms
           search-domains = []
