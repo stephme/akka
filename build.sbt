@@ -502,6 +502,7 @@ def akkaModule(name: String): Project =
     .settings(akka.AkkaBuild.defaultSettings)
     .settings(akka.Formatting.formatSettings)
     .enablePlugins(BootstrapGenjavadoc)
+    .enablePlugins(ReproducibleBuildsPlugin)
 
 /* Command aliases one can run locally against a module
   - where three or more tasks should be checked for faster turnaround

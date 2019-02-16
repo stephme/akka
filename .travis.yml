@@ -30,11 +30,14 @@ cache:
 script:
   - jabba use "adopt@1.8.192-12"
   # need to override as the default is to test
-  - sbt -jvm-opts .jvmopts-travis ++$TRAVIS_SCALA_VERSION update mimaReportBinaryIssues test:compile
+  - sbt -jvm-opts .jvmopts-travis ++$TRAVIS_SCALA_VERSION update mimaReportBinaryIssues test:compile publishLocal
   # make 'git branch' work again
   - git branch -f "$TRAVIS_BRANCH" && git checkout "$TRAVIS_BRANCH"
   # check policies, if on master also upload
   - if [[ "$TRAVIS_SECURE_ENV_VARS" == "true" ]]; then if [[ "$TRAVIS_BRANCH" == "master" && "$TRAVIS_EVENT_TYPE" == "push" ]]; then sbt 'set credentials += Credentials("whitesource", "whitesourcesoftware.com", "", System.getenv("WHITESOURCE_KEY"))' whitesourceCheckPolicies whitesourceUpdate; else sbt 'set credentials += Credentials("whitesource", "whitesourcesoftware.com", "", System.getenv("WHITESOURCE_KEY"))' whitesourceCheckPolicies; fi ; fi
+  - sha512sum ~/.ivy2/local/com.typesafe.akka/akka-*/*/poms/*.pom
+  - sha512sum ~/.ivy2/local/com.typesafe.akka/akka-*/*/jars/*.jar
+  - cat ~/.ivy2/local/com.typesafe.akka/akka-*/*/buildinfos/*.buildinfo
 
 env:
   global:
