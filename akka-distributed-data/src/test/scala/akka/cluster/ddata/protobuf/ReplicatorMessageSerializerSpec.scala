@@ -85,24 +85,24 @@ class ReplicatorMessageSerializerSpec extends TestKit(ActorSystem(
       checkSerialization(DataEnvelope(data1, pruning = Map(
         address1 → PruningPerformed(System.currentTimeMillis()),
         address3 → PruningInitialized(address2, Set(address1.address)))))
-      checkSerialization(Write("A", DataEnvelope(data1)))
+      checkSerialization(Write("A", DataEnvelope(data1), Some(17)))
       checkSerialization(WriteAck)
       checkSerialization(WriteNack)
       checkSerialization(DeltaNack)
-      checkSerialization(Read("A"))
+      checkSerialization(Read("A", Some(17)))
       checkSerialization(ReadResult(Some(DataEnvelope(data1))))
       checkSerialization(ReadResult(None))
       checkSerialization(Status(Map(
         "A" → ByteString.fromString("a"),
-        "B" → ByteString.fromString("b")), chunk = 3, totChunks = 10))
+        "B" → ByteString.fromString("b")), chunk = 3, totChunks = 10, Some(17), Some(19)))
       checkSerialization(Gossip(Map(
         "A" → DataEnvelope(data1),
-        "B" → DataEnvelope(GSet() + "b" + "c")), sendBack = true))
+        "B" → DataEnvelope(GSet() + "b" + "c")), sendBack = true, Some(17), Some(19)))
       checkSerialization(DeltaPropagation(address1, reply = true, Map(
         "A" → Delta(DataEnvelope(delta1), 1L, 1L),
         "B" → Delta(DataEnvelope(delta2), 3L, 5L),
         "C" → Delta(DataEnvelope(delta3), 1L, 1L),
-        "DC" → Delta(DataEnvelope(delta4), 1L, 1L))))
+        "DC" → Delta(DataEnvelope(delta4), 1L, 1L)), Some(17)))
 
       checkSerialization(new DurableDataEnvelope(data1))
       val pruning = Map(
@@ -133,10 +133,10 @@ class ReplicatorMessageSerializerSpec extends TestKit(ActorSystem(
 
     "get added element" in {
       val cache = new SmallCache[Read, String](2, 5.seconds, _ ⇒ null)
-      val a = Read("a")
+      val a = Read("a", Some(17))
       cache.add(a, "A")
       cache.get(a) should be("A")
-      val b = Read("b")
+      val b = Read("b", Some(17))
       cache.add(b, "B")
       cache.get(a) should be("A")
       cache.get(b) should be("B")
@@ -144,20 +144,20 @@ class ReplicatorMessageSerializerSpec extends TestKit(ActorSystem(
 
     "return null for non-existing elements" in {
       val cache = new SmallCache[Read, String](4, 5.seconds, _ ⇒ null)
-      val a = Read("a")
+      val a = Read("a", Some(17))
       cache.get(a) should be(null)
       cache.add(a, "A")
-      val b = Read("b")
+      val b = Read("b", Some(17))
       cache.get(b) should be(null)
     }
 
     "hold latest added elements" in {
       val cache = new SmallCache[Read, String](4, 5.seconds, _ ⇒ null)
-      val a = Read("a")
-      val b = Read("b")
-      val c = Read("c")
-      val d = Read("d")
-      val e = Read("e")
+      val a = Read("a", Some(17))
+      val b = Read("b", Some(17))
+      val c = Read("c", Some(17))
+      val d = Read("d", Some(17))
+      val e = Read("e", Some(17))
       cache.add(a, "A")
       cache.get(a) should be("A")
       cache.add(b, "B")
@@ -184,7 +184,7 @@ class ReplicatorMessageSerializerSpec extends TestKit(ActorSystem(
 
     "handle Int wrap around" ignore { // ignored because it takes 20 seconds (but it works)
       val cache = new SmallCache[Read, String](2, 5.seconds, _ ⇒ null)
-      val a = Read("a")
+      val a = Read("a", Some(17))
       val x = a → "A"
       var n = 0
       while (n <= Int.MaxValue - 3) {
@@ -194,8 +194,8 @@ class ReplicatorMessageSerializerSpec extends TestKit(ActorSystem(
 
       cache.get(a) should be("A")
 
-      val b = Read("b")
-      val c = Read("c")
+      val b = Read("b", Some(17))
+      val c = Read("c", Some(17))
       cache.add(b, "B")
       cache.get(a) should be("A")
       cache.get(b) should be("B")
@@ -221,7 +221,7 @@ class ReplicatorMessageSerializerSpec extends TestKit(ActorSystem(
       }
 
       val cache = new SmallCache[Read, AnyRef](4, 5.seconds, a ⇒ createValue(a))
-      val a = Read("a")
+      val a = Read("a", Some(17))
       val v1 = cache.getOrAdd(a)
       v1.toString should be("v1")
       cache.getOrAdd(a) should be theSameInstanceAs v1
@@ -229,8 +229,8 @@ class ReplicatorMessageSerializerSpec extends TestKit(ActorSystem(
 
     "evict cache after time-to-live" in {
       val cache = new SmallCache[Read, AnyRef](4, 10.millis, _ ⇒ null)
-      val b = Read("b")
-      val c = Read("c")
+      val b = Read("b", Some(17))
+      val c = Read("c", Some(17))
       cache.add(b, "B")
       cache.add(c, "C")
 
@@ -242,8 +242,8 @@ class ReplicatorMessageSerializerSpec extends TestKit(ActorSystem(
 
     "not evict cache before time-to-live" in {
       val cache = new SmallCache[Read, AnyRef](4, 5.seconds, _ ⇒ null)
-      val b = Read("b")
-      val c = Read("c")
+      val b = Read("b", Some(17))
+      val c = Read("c", Some(17))
       cache.add(b, "B")
       cache.add(c, "C")
       cache.evict()
