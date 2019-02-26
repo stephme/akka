@@ -50,17 +50,15 @@ lazy val aggregatedProjects: Seq[ProjectReference] = Seq(
   discovery
 )
 
+// Temporary in this branch, which will be deleted. Testing jenkins.
+lazy val scoverageNightly: Seq[ProjectReference] = Seq(cluster)
+
 lazy val root = Project(
   id = "akka",
   base = file(".")
-).aggregate(aggregatedProjects: _*)
+).aggregate(scoverageNightly: _*)
  .settings(rootSettings: _*)
- .settings(unidocRootIgnoreProjects :=
-   (CrossVersion.partialVersion(scalaVersion.value) match {
-     case Some((2, n)) if n == 11 ⇒ aggregatedProjects // ignore all, don't unidoc when scalaVersion is 2.11
-     case _                       ⇒ Seq(remoteTests, benchJmh, protobuf, akkaScalaNightly, docs)
-   })
- )
+ .settings(unidocRootIgnoreProjects := scoverageNightly)
  .settings(
    unmanagedSources in(Compile, headerCreate) := (baseDirectory.value / "project").**("*.scala").get
  ).enablePlugins(CopyrightHeaderForBuild)
