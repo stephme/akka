@@ -51,7 +51,7 @@ lazy val aggregatedProjects: Seq[ProjectReference] = Seq(
 )
 
 // Temporary in this branch, which will be deleted. Testing jenkins.
-lazy val scoverageNightly: Seq[ProjectReference] = Seq(cluster)
+lazy val scoverageNightly: Seq[ProjectReference] = Seq(actor, actorTests)//Seq(cluster)
 
 lazy val root = Project(
   id = "akka",
