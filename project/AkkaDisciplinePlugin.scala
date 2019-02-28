@@ -26,6 +26,7 @@ object AkkaDisciplinePlugin extends AutoPlugin with ScalafixSupport {
     Compile / scalacOptions += "-Yrangepos")
 
   lazy val scoverageSettings = Seq(
+    coverageEnabled := baseDirectory.value.name.endsWith("tests"),
     coverageMinimum := 70,
     coverageFailOnMinimum := false,
     coverageOutputHTML := true,
